@@ -1,6 +1,8 @@
 const WORDPRESS_API = "https://wooshradio.com/wp-json/wp/v2";
 const SCHEDULE_API = "https://wooshradio.com/wp-json/proradio/v1/schedule/";
 
+// RADIO SHOWS
+
 export type RadioShow = {
   id: number;
   slug: string;
@@ -24,42 +26,6 @@ type WordPressShow = Omit<RadioShow, "artwork"> & {
       };
     }>;
   };
-};
-
-export type ScheduledShow = {
-  showId: string;
-  startTime: string;
-  endTime: string;
-};
-
-export type ScheduleDay = {
-  id: number;
-  title: string;
-  menuOrder: number;
-  shows: ScheduledShow[];
-};
-
-export type WeeklySchedule = {
-  currentDayId: number;
-  days: ScheduleDay[];
-};
-
-type WordPressScheduleSlot = {
-  show_id: string[];
-  show_time: string;
-  show_time_end: string;
-};
-
-type WordPressSchedulePost = {
-  ID: number;
-  post_title: string;
-  menu_order: number;
-  shows?: WordPressScheduleSlot[];
-};
-
-type WordPressScheduleResponse = {
-  current_day_id: number;
-  posts: WordPressSchedulePost[];
 };
 
 export async function getRadioShows(): Promise<RadioShow[]> {
@@ -101,6 +67,155 @@ export async function getRadioShows(): Promise<RadioShow[]> {
       }),
     );
 }
+
+// TEAM MEMBERS
+
+export type TeamMember = {
+  id: number;
+  slug: string;
+  link: string;
+  name: string;
+  biography: string;
+  image: string | null;
+  menuOrder: number;
+};
+
+type WordPressMember = {
+  id: number;
+  slug: string;
+  link: string;
+  status: string;
+  title: { rendered: string };
+  content: { rendered: string };
+  featured_media: number;
+  menu_order: number;
+  _embedded?: {
+    "wp:featuredmedia"?: Array<{
+      source_url?: string;
+      media_details?: {
+        sizes?: {
+          "proradio-card"?: { source_url?: string };
+          medium?: { source_url?: string };
+          large?: { source_url?: string };
+        };
+      };
+    }>;
+  };
+};
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&#(\d+);/g, (_match, number: string) =>
+      String.fromCodePoint(Number(number)),
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) =>
+      String.fromCodePoint(parseInt(hex, 16)),
+    )
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function htmlToPlainText(html: string): string {
+  return decodeHtmlEntities(
+    html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<\/(p|div|h[1-6]|li|br|blockquote)>/gi, "\n\n")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
+  );
+}
+
+export async function getTeamMembers(): Promise<TeamMember[]> {
+  const response = await fetch(
+    `${WORDPRESS_API}/members?per_page=100&orderby=menu_order&order=asc&_embed=wp:featuredmedia`,
+  );
+
+  if (!response.ok) {
+    throw new Error(`Unable to load team members. HTTP ${response.status}`);
+  }
+
+  const members: WordPressMember[] = await response.json();
+
+  if (!Array.isArray(members)) {
+    throw new Error("The team members response has an unexpected format.");
+  }
+
+  return members
+    .filter((member) => member.status === "publish")
+    .map((member) => {
+      const media = member._embedded?.["wp:featuredmedia"]?.[0];
+
+      const image =
+        media?.media_details?.sizes?.["proradio-card"]?.source_url ??
+        media?.media_details?.sizes?.medium?.source_url ??
+        media?.media_details?.sizes?.large?.source_url ??
+        media?.source_url ??
+        null;
+
+      return {
+        id: member.id,
+        slug: member.slug,
+        link: member.link,
+        name: htmlToPlainText(member.title.rendered),
+        biography: htmlToPlainText(member.content.rendered),
+        image,
+        menuOrder: member.menu_order,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.menuOrder - b.menuOrder ||
+        a.name.localeCompare(b.name, undefined, {
+          sensitivity: "base",
+        }),
+    );
+}
+
+// WEEKLY SCHEDULE
+
+export type ScheduledShow = {
+  showId: string;
+  startTime: string;
+  endTime: string;
+};
+
+export type ScheduleDay = {
+  id: number;
+  title: string;
+  menuOrder: number;
+  shows: ScheduledShow[];
+};
+
+export type WeeklySchedule = {
+  currentDayId: number;
+  days: ScheduleDay[];
+};
+
+type WordPressScheduleSlot = {
+  show_id: string[];
+  show_time: string;
+  show_time_end: string;
+};
+
+type WordPressSchedulePost = {
+  ID: number;
+  post_title: string;
+  menu_order: number;
+  shows?: WordPressScheduleSlot[];
+};
+
+type WordPressScheduleResponse = {
+  current_day_id: number;
+  posts: WordPressSchedulePost[];
+};
 
 export async function getWeeklySchedule(): Promise<WeeklySchedule> {
   const response = await fetch(SCHEDULE_API);

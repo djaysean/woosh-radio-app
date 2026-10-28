@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BrandFooter from "../../components/BrandFooter";
 import { getRadioShows, type RadioShow } from "../../lib/wordpress";
 
 export default function ShowsScreen() {
@@ -53,8 +54,6 @@ export default function ShowsScreen() {
 
   useEffect(() => {
     void loadShows();
-
-    return () => {};
   }, [loadShows]);
 
   return (
@@ -152,12 +151,7 @@ export default function ShowsScreen() {
           </View>
         )}
 
-        <View style={styles.footer}>
-          <Text style={styles.footerBrand}>WOOSH RADIO</Text>
-          <Text style={styles.footerTagline}>
-            THE SOUND OF WHAT’S HAPPENING
-          </Text>
-        </View>
+        <BrandFooter />
       </ScrollView>
     </SafeAreaView>
   );
@@ -171,7 +165,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 22,
-    paddingBottom: 36,
+    paddingBottom: 24,
   },
   header: {
     marginBottom: 24,
@@ -285,26 +279,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.5,
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: 36,
-    paddingTop: 22,
-    borderTopWidth: 1,
-    borderTopColor: "#29243D",
-  },
-  footerBrand: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 4,
-  },
-  footerTagline: {
-    color: "#8983A7",
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    marginTop: 8,
-    textAlign: "center",
   },
 });

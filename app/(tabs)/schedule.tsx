@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BrandFooter from "../../components/BrandFooter";
 import {
-    getRadioShows,
-    getWeeklySchedule,
-    RadioShow,
-    WeeklySchedule
+  getRadioShows,
+  getWeeklySchedule,
+  RadioShow,
+  WeeklySchedule,
 } from "../../lib/wordpress";
 
 const COLORS = {
@@ -242,6 +243,8 @@ export default function ScheduleScreen() {
             </Text>
           </>
         )}
+
+        <BrandFooter />
       </ScrollView>
     </SafeAreaView>
   );
