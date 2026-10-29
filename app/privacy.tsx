@@ -10,12 +10,24 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import RenderHTML from "react-native-render-html";
+import RenderHTML, { defaultSystemFonts } from "react-native-render-html";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BrandFooter from "../components/BrandFooter";
 
 const PRIVACY_API_URL =
   "https://wooshradio.com/wp-json/wp/v2/pages?slug=privacy-policy";
+
+// Register the custom app fonts with the HTML renderer.
+const systemFonts = [
+  ...defaultSystemFonts,
+  "SoraSemiBold",
+  "SoraBold",
+  "SoraExtraBold",
+  "InterRegular",
+  "InterMedium",
+  "InterSemiBold",
+  "InterBold",
+];
 
 type WordPressPage = {
   title: {
@@ -77,7 +89,7 @@ export default function PrivacyScreen() {
   }, []);
 
   useEffect(() => {
-    loadPolicy();
+    void loadPolicy();
   }, [loadPolicy]);
 
   const formattedDate = lastUpdated
@@ -105,10 +117,11 @@ export default function PrivacyScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => loadPolicy(true)}
+            onRefresh={() => void loadPolicy(true)}
             tintColor="#D946EF"
             colors={["#D946EF"]}
           />
@@ -134,7 +147,11 @@ export default function PrivacyScreen() {
         ) : error && !policyHtml ? (
           <View style={styles.stateContainer}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={() => loadPolicy()}>
+            <Pressable
+              style={styles.retryButton}
+              onPress={() => void loadPolicy()}
+              accessibilityRole="button"
+            >
               <Text style={styles.retryButtonText}>Try Again</Text>
             </Pressable>
           </View>
@@ -146,10 +163,15 @@ export default function PrivacyScreen() {
               <RenderHTML
                 contentWidth={width - 56}
                 source={{ html: policyHtml }}
+                systemFonts={systemFonts}
                 renderersProps={renderersProps}
                 tagsStyles={htmlStyles}
-                baseStyle={styles.baseText}
-                defaultTextProps={{ selectable: true }}
+                baseStyle={baseHtmlStyle}
+                ignoredStyles={["fontFamily", "fontWeight"]}
+                defaultTextProps={{
+                  selectable: true,
+                  allowFontScaling: true,
+                }}
               />
             </View>
           </>
@@ -161,34 +183,90 @@ export default function PrivacyScreen() {
   );
 }
 
+// Keep RenderHTML mixed styles as plain objects, not StyleSheet.create styles.
+const baseHtmlStyle = {
+  color: "#D1D5DB",
+  fontSize: 15,
+  fontFamily: "InterRegular",
+  lineHeight: 25,
+};
+
 const htmlStyles = {
+  body: {
+    color: "#D1D5DB",
+    fontSize: 15,
+    fontFamily: "InterRegular",
+    lineHeight: 25,
+  },
+  h1: {
+    color: "#FFFFFF",
+    fontSize: 26,
+    fontFamily: "SoraExtraBold",
+    marginTop: 24,
+    marginBottom: 12,
+  },
   h2: {
     color: "#FFFFFF",
     fontSize: 21,
-    fontWeight: "700" as const,
+    fontFamily: "SoraBold",
     marginTop: 24,
     marginBottom: 10,
   },
   h3: {
     color: "#F0ABFC",
     fontSize: 17,
-    fontWeight: "700" as const,
+    fontFamily: "SoraBold",
     marginTop: 18,
     marginBottom: 8,
+  },
+  h4: {
+    color: "#F0ABFC",
+    fontSize: 16,
+    fontFamily: "SoraBold",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  h5: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontFamily: "InterBold",
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  h6: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "InterBold",
+    marginTop: 12,
+    marginBottom: 6,
   },
   p: {
     color: "#D1D5DB",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 25,
     marginTop: 0,
     marginBottom: 14,
   },
   strong: {
     color: "#FFFFFF",
-    fontWeight: "700" as const,
+    fontFamily: "InterBold",
+  },
+  b: {
+    color: "#FFFFFF",
+    fontFamily: "InterBold",
+  },
+  em: {
+    fontFamily: "InterRegular",
+    fontStyle: "italic" as const,
+  },
+  i: {
+    fontFamily: "InterRegular",
+    fontStyle: "italic" as const,
   },
   a: {
     color: "#E879F9",
+    fontFamily: "InterMedium",
     textDecorationLine: "underline" as const,
   },
   ul: {
@@ -202,8 +280,14 @@ const htmlStyles = {
   li: {
     color: "#D1D5DB",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 25,
     marginBottom: 8,
+  },
+  blockquote: {
+    color: "#B9B3C9",
+    fontFamily: "InterRegular",
+    marginVertical: 12,
   },
 };
 
@@ -227,24 +311,26 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: "#E879F9",
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 10,
   },
   title: {
     color: "#FFFFFF",
     fontSize: 32,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     marginBottom: 10,
   },
   subtitle: {
     color: "#B9B3C9",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 23,
   },
   updated: {
     color: "#8D849F",
     fontSize: 12,
+    fontFamily: "InterMedium",
     marginTop: 14,
   },
   policyCard: {
@@ -253,11 +339,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     padding: 18,
-  },
-  baseText: {
-    color: "#D1D5DB",
-    fontSize: 15,
-    lineHeight: 25,
   },
   stateContainer: {
     alignItems: "center",
@@ -268,16 +349,19 @@ const styles = StyleSheet.create({
   stateText: {
     color: "#B9B3C9",
     fontSize: 14,
+    fontFamily: "InterRegular",
   },
   errorText: {
     color: "#FCA5A5",
     textAlign: "center",
     fontSize: 14,
+    fontFamily: "InterRegular",
     lineHeight: 22,
   },
   inlineError: {
     color: "#FCA5A5",
     fontSize: 13,
+    fontFamily: "InterRegular",
     marginBottom: 14,
   },
   retryButton: {
@@ -289,6 +373,6 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: "InterBold",
   },
 });

@@ -74,7 +74,9 @@ export default function ShowsScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.eyebrow}>DISCOVER WOOSH</Text>
+
           <Text style={styles.heading}>Our Shows</Text>
+
           <Text style={styles.subtitle}>
             Your favourite sounds, stories and voices — all in one place.
           </Text>
@@ -94,6 +96,7 @@ export default function ShowsScreen() {
         ) : error ? (
           <View style={styles.stateContainer}>
             <Text style={styles.stateTitle}>Unable to load shows</Text>
+
             <Text style={styles.stateText}>{error}</Text>
 
             <Pressable
@@ -173,19 +176,20 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: "#E83E8C",
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 10,
   },
   heading: {
     color: "#FFFFFF",
     fontSize: 34,
-    fontWeight: "900",
+    fontFamily: "SoraExtraBold",
     letterSpacing: -1,
   },
   subtitle: {
     color: "#B8B3CC",
     fontSize: 14,
+    fontFamily: "InterRegular",
     lineHeight: 22,
     marginTop: 10,
     maxWidth: 320,
@@ -193,7 +197,7 @@ const styles = StyleSheet.create({
   count: {
     color: "#E83E8C",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 2,
     marginTop: 18,
   },
@@ -223,7 +227,7 @@ const styles = StyleSheet.create({
   fallbackMark: {
     color: "#E83E8C",
     fontSize: 40,
-    fontWeight: "900",
+    fontFamily: "SoraExtraBold",
   },
   showInfo: {
     flex: 1,
@@ -232,19 +236,20 @@ const styles = StyleSheet.create({
   showTitle: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: "SoraBold",
     lineHeight: 22,
   },
   description: {
     color: "#B8B3CC",
     fontSize: 12,
+    fontFamily: "InterRegular",
     lineHeight: 18,
     marginTop: 7,
   },
   showLabel: {
     color: "#E83E8C",
     fontSize: 9,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 1.5,
     marginTop: 12,
   },
@@ -258,12 +263,13 @@ const styles = StyleSheet.create({
   stateTitle: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: "SoraBold",
     textAlign: "center",
   },
   stateText: {
     color: "#B8B3CC",
     fontSize: 14,
+    fontFamily: "InterRegular",
     lineHeight: 21,
     textAlign: "center",
   },
@@ -277,7 +283,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "900",
+    fontFamily: "InterBold",
     letterSpacing: 1.5,
   },
 });

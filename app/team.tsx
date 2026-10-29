@@ -168,24 +168,25 @@ const styles = StyleSheet.create({
   backText: {
     color: "#D8B4FE",
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "InterSemiBold",
   },
   brand: {
     color: "#D8B4FE",
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 12,
   },
   heading: {
     color: "#FFFFFF",
     fontSize: 30,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     marginBottom: 10,
   },
   description: {
     color: "#D0CDDF",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 23,
     marginBottom: 26,
   },
@@ -217,20 +218,20 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "#D8B4FE",
     fontSize: 48,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
   },
   memberName: {
     color: "#FFFFFF",
     fontSize: 15,
     lineHeight: 21,
-    fontWeight: "700",
+    fontFamily: "SoraBold",
     paddingHorizontal: 12,
     paddingTop: 13,
   },
   viewProfile: {
     color: "#F0ABFC",
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 0.8,
     paddingHorizontal: 12,
     paddingTop: 8,
@@ -243,6 +244,7 @@ const styles = StyleSheet.create({
   stateText: {
     color: "#D0CDDF",
     fontSize: 14,
+    fontFamily: "InterRegular",
     textAlign: "center",
     lineHeight: 22,
   },
@@ -254,6 +256,6 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontFamily: "InterBold",
   },
 });

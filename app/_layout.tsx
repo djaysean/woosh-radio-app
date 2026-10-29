@@ -17,16 +17,25 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    SoraSemiBold: require("../assets/fonts/Sora-SemiBold.ttf"),
+    SoraBold: require("../assets/fonts/Sora-Bold.ttf"),
+    SoraExtraBold: require("../assets/fonts/Sora-ExtraBold.ttf"),
+
+    InterRegular: require("../assets/fonts/Inter_18pt-Regular.ttf"),
+    InterMedium: require("../assets/fonts/Inter_18pt-Medium.ttf"),
+    InterSemiBold: require("../assets/fonts/Inter_18pt-SemiBold.ttf"),
+    InterBold: require("../assets/fonts/Inter_18pt-Bold.ttf"),
   });
 
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
   }, [error]);
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
     }
   }, [loaded]);
 

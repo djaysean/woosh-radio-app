@@ -284,13 +284,13 @@ const styles = StyleSheet.create({
   trackTitle: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: "SoraBold",
     letterSpacing: 0.2,
   },
   trackArtist: {
     color: "#C8C5EB",
     fontSize: 14,
-    fontWeight: "500",
+    fontFamily: "InterMedium",
   },
   playButton: {
     width: 60,
@@ -338,6 +338,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#FF8BCE",
     fontSize: 12,
+    fontFamily: "InterRegular",
     marginHorizontal: 24,
     marginBottom: 8,
   },
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: "InterMedium",
   },
   activeIndicator: {
     width: 7,

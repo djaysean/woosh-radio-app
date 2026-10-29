@@ -154,25 +154,26 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: COLORS.accent,
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 10,
   },
   title: {
     color: COLORS.text,
     fontSize: 30,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     letterSpacing: -0.8,
   },
   subtitle: {
     color: COLORS.muted,
     fontSize: 14,
+    fontFamily: "InterRegular",
     marginTop: 8,
   },
   sectionLabel: {
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 1.8,
     marginBottom: 12,
   },
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
   iconText: {
     color: "#E879F9",
     fontSize: 23,
-    fontWeight: "800",
+    fontFamily: "InterBold",
   },
   menuText: {
     flex: 1,
@@ -212,16 +213,18 @@ const styles = StyleSheet.create({
   menuTitle: {
     color: COLORS.text,
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: "SoraBold",
   },
   menuDescription: {
     color: COLORS.muted,
     fontSize: 12,
+    fontFamily: "InterRegular",
     lineHeight: 17,
   },
   chevron: {
     color: COLORS.muted,
     fontSize: 23,
+    fontFamily: "InterRegular",
     paddingLeft: 4,
   },
   divider: {
@@ -235,5 +238,6 @@ const styles = StyleSheet.create({
   versionText: {
     color: COLORS.muted,
     fontSize: 12,
+    fontFamily: "InterMedium",
   },
 });

@@ -1,5 +1,5 @@
-import { Text, View } from "@/components/Themed";
-import { getRadioShows, type RadioShow } from "@/lib/wordpress";
+import { useRadioPlayer } from "@/contexts/RadioPlayerContext";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,474 +8,782 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BrandFooter from "../../components/BrandFooter";
+import {
+  getRadioShows,
+  getWeeklySchedule,
+  type RadioShow,
+  type ScheduledShow,
+  type WeeklySchedule,
+} from "../../lib/wordpress";
+
+const MAIN_LOGO = require("../../assets/images/woosh-radio-flat.png");
+const CIRCULAR_LOGO = require("../../assets/images/woosh-radio-icon.png");
+
+const COLORS = {
+  background: "#080617",
+  card: "#151129",
+  border: "#30234B",
+  white: "#FFFFFF",
+  muted: "#B8B2CC",
+  pink: "#FF2D8D",
+  purple: "#8B5CF6",
+};
+
+type OnAirShow = {
+  show: RadioShow;
+};
+
+function cleanTitle(title: string): string {
+  return title
+    .replace(/<[^>]*>/g, "")
+    .replace(/&#8217;|&#x2019;/g, "’")
+    .replace(/&#x2018;|&#8216;/g, "‘")
+    .replace(/&#8220;|&#8221;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
+/**
+ * Converts schedule times such as "09:30", "09:30:00",
+ * "9:30 AM", or "21:30" into minutes after midnight.
+ */
+function parseTimeToMinutes(value: string): number | null {
+  const normalized = value.trim().toUpperCase();
+  const match = normalized.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3];
+
+  if (minutes > 59) {
+    return null;
+  }
+
+  if (meridiem) {
+    if (hours < 1 || hours > 12) {
+      return null;
+    }
+
+    if (meridiem === "AM") {
+      hours = hours === 12 ? 0 : hours;
+    } else {
+      hours = hours === 12 ? 12 : hours + 12;
+    }
+  } else if (hours > 23) {
+    return null;
+  }
+
+  return hours * 60 + minutes;
+}
+
+/**
+ * Returns the current hour and minute in Nairobi, Kenya,
+ * regardless of the device timezone.
+ */
+function getNairobiMinutes(date: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Nairobi",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const hours = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minutes = Number(
+    parts.find((part) => part.type === "minute")?.value ?? 0,
+  );
+
+  return hours * 60 + minutes;
+}
+
+function isSlotOnAir(slot: ScheduledShow, currentMinutes: number): boolean {
+  const start = parseTimeToMinutes(slot.startTime);
+  const end = parseTimeToMinutes(slot.endTime);
+
+  if (start === null || end === null || start === end) {
+    return false;
+  }
+
+  if (start < end) {
+    return currentMinutes >= start && currentMinutes < end;
+  }
+
+  return currentMinutes >= start || currentMinutes < end;
+}
+
+function findOnAirShow(
+  schedule: WeeklySchedule,
+  shows: RadioShow[],
+  now: Date,
+): OnAirShow | null {
+  if (schedule.days.length === 0 || shows.length === 0) {
+    return null;
+  }
+
+  const currentMinutes = getNairobiMinutes(now);
+  const showsById = new Map(shows.map((show) => [String(show.id), show]));
+
+  const currentDay = schedule.days.find(
+    (day) => day.id === schedule.currentDayId,
+  );
+
+  if (!currentDay) {
+    return null;
+  }
+
+  const activeSlot = currentDay.shows.find((slot) =>
+    isSlotOnAir(slot, currentMinutes),
+  );
+
+  if (activeSlot) {
+    const show = showsById.get(activeSlot.showId);
+
+    if (show) {
+      return { show };
+    }
+  }
+
+  const orderedDays = [...schedule.days].sort(
+    (a, b) => a.menuOrder - b.menuOrder,
+  );
+
+  const currentDayIndex = orderedDays.findIndex(
+    (day) => day.id === currentDay.id,
+  );
+
+  const previousDay =
+    currentDayIndex > 0
+      ? orderedDays[currentDayIndex - 1]
+      : orderedDays[orderedDays.length - 1];
+
+  if (previousDay) {
+    const overnightSlot = previousDay.shows.find((slot) => {
+      const start = parseTimeToMinutes(slot.startTime);
+      const end = parseTimeToMinutes(slot.endTime);
+
+      return (
+        start !== null && end !== null && start > end && currentMinutes < end
+      );
+    });
+
+    if (overnightSlot) {
+      const show = showsById.get(overnightSlot.showId);
+
+      if (show) {
+        return { show };
+      }
+    }
+  }
+
+  return null;
+}
 
 export default function HomeScreen() {
-  const [shows, setShows] = useState<RadioShow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const { togglePlayback, isPlaying } = useRadioPlayer();
 
-  const loadShows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
+  const [shows, setShows] = useState<RadioShow[]>([]);
+  const [now, setNow] = useState(() => new Date());
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [playbackLoading, setPlaybackLoading] = useState(false);
+
+  const loadHomeData = useCallback(async (showLoader = false) => {
+    if (showLoader) {
+      setLoading(true);
+    }
 
     try {
-      const data = await getRadioShows();
-      setShows(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to load shows right now.",
-      );
+      const [weeklySchedule, radioShows] = await Promise.all([
+        getWeeklySchedule(),
+        getRadioShows(),
+      ]);
+
+      setSchedule(weeklySchedule);
+      setShows(radioShows);
+      setLoadError(false);
+    } catch (error) {
+      console.error("Failed to load Home screen data:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadShows();
-  }, [loadShows]);
+    void loadHomeData(true);
+
+    const scheduleInterval = setInterval(() => {
+      void loadHomeData();
+    }, 60_000);
+
+    const clockInterval = setInterval(() => {
+      setNow(new Date());
+    }, 15_000);
+
+    return () => {
+      clearInterval(scheduleInterval);
+      clearInterval(clockInterval);
+    };
+  }, [loadHomeData]);
+
+  const openSchedule = useCallback(() => {
+    router.push("/(tabs)/schedule");
+  }, [router]);
+
+  const openShows = useCallback(() => {
+    router.push("/(tabs)/shows");
+  }, [router]);
+
+  const handleListenLive = useCallback(async () => {
+    setPlaybackLoading(true);
+
+    try {
+      await togglePlayback();
+    } catch (error) {
+      console.error("Unable to toggle radio playback:", error);
+    } finally {
+      setPlaybackLoading(false);
+    }
+  }, [togglePlayback]);
+
+  const onAir = schedule ? findOnAirShow(schedule, shows, now) : null;
+
+  const onAirTitle = onAir ? cleanTitle(onAir.show.title.rendered) : "";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <StatusBar barStyle="light-content" />
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        style={styles.container}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Brand header */}
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoSymbol}>W</Text>
-            </View>
-
-            <View>
-              <Text style={styles.brandName}>WOOSH RADIO</Text>
-              <Text style={styles.tagline}>THE SOUND OF WHAT'S HAPPENING</Text>
-            </View>
+          <View style={styles.logoFrame}>
+            <Image
+              source={MAIN_LOGO}
+              style={styles.mainLogo}
+              resizeMode="contain"
+              accessibilityLabel="Woosh Radio"
+            />
           </View>
 
-          <View style={styles.liveBadge}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>RADIO</Text>
-          </View>
+          <Text style={styles.brandTagline}>YOUR SOUND. YOUR WORLD.</Text>
         </View>
 
-        {/* Welcome section */}
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>YOUR SOUND. YOUR WORLD.</Text>
+          <View style={styles.glowTop} />
+          <View style={styles.glowBottom} />
+
+          <Text style={styles.heroEyebrow}>WELCOME TO WOOSH RADIO</Text>
 
           <Text style={styles.heroTitle}>
             Turn up{"\n"}your <Text style={styles.heroAccent}>world.</Text>
           </Text>
 
           <Text style={styles.heroDescription}>
-            Music, conversations and stories that move you. Wherever you are,
-            WOOSH is with you.
+            Your favorite sounds, fresh voices, and the energy you need — all in
+            one place.
           </Text>
 
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Listen live"
+            onPress={handleListenLive}
+            disabled={playbackLoading}
             style={({ pressed }) => [
               styles.listenButton,
               pressed && styles.buttonPressed,
+              playbackLoading && styles.buttonDisabled,
             ]}
-            onPress={() => {
-              // Live audio playback will be connected in a later step.
-            }}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? "Pause live radio" : "Listen live"}
           >
-            <Text style={styles.playIcon}>▶</Text>
-            <Text style={styles.listenButtonText}>LISTEN LIVE</Text>
+            {playbackLoading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Text style={styles.listenButtonIcon}>
+                  {isPlaying ? "Ⅱ" : "▶"}
+                </Text>
+
+                <Text style={styles.listenButtonText}>
+                  {isPlaying ? "PAUSE LIVE RADIO" : "LISTEN LIVE"}
+                </Text>
+              </>
+            )}
           </Pressable>
 
-          <Text style={styles.streamCaption}>
-            MUSIC • CONVERSATIONS • GOOD ENERGY
-          </Text>
+          <View style={styles.liveStatus}>
+            <View style={[styles.liveDot, isPlaying && styles.liveDotActive]} />
+
+            <Text style={styles.liveStatusText}>
+              {isPlaying ? "YOU’RE TUNED IN" : "YOUR RADIO. YOUR WORLD."}
+            </Text>
+          </View>
         </View>
 
-        {/* Live WordPress programs */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionEyebrow}>TUNED FOR YOU</Text>
-              <Text style={styles.sectionTitle}>On WOOSH</Text>
-            </View>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeadingGroup}>
+            <Text style={styles.sectionEyebrow}>ON AIR NOW</Text>
 
-            <Text style={styles.sectionAccent}>EXPLORE</Text>
+            <Text style={styles.sectionTitle}>Featured Show</Text>
           </View>
 
-          {loading ? (
-            <View style={styles.statusContainer}>
-              <ActivityIndicator size="large" color="#C56BFF" />
-              <Text style={styles.statusText}>Loading WOOSH shows...</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.statusContainer}>
-              <Text style={styles.errorTitle}>Couldn't load the shows</Text>
-              <Text style={styles.statusText}>{error}</Text>
+          <View style={styles.sectionAccent} />
+        </View>
 
-              <Pressable
-                accessibilityRole="button"
-                style={styles.retryButton}
-                onPress={() => void loadShows()}
-              >
-                <Text style={styles.retryButtonText}>TRY AGAIN</Text>
-              </Pressable>
-            </View>
-          ) : shows.length === 0 ? (
-            <View style={styles.statusContainer}>
-              <Text style={styles.statusText}>
-                No published shows were found.
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.pink} />
+
+            <Text style={styles.loadingText}>Checking what’s on air…</Text>
+          </View>
+        ) : loadError && !schedule ? (
+          <View style={styles.messageCard}>
+            <Text style={styles.messageTitle}>
+              We couldn’t load the schedule.
+            </Text>
+
+            <Text style={styles.messageText}>
+              Check your connection and try again.
+            </Text>
+
+            <Pressable
+              onPress={() => void loadHomeData(true)}
+              style={({ pressed }) => [
+                styles.retryButton,
+                pressed && styles.buttonPressed,
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.retryButtonText}>TRY AGAIN</Text>
+            </Pressable>
+          </View>
+        ) : onAir ? (
+          <View style={styles.onAirCard}>
+            {onAir.show.artwork ? (
+              <Image
+                source={{ uri: onAir.show.artwork }}
+                style={styles.onAirArtwork}
+                resizeMode="cover"
+                accessibilityLabel={`${onAirTitle} artwork`}
+              />
+            ) : (
+              <View style={styles.artworkFallback}>
+                <Image
+                  source={CIRCULAR_LOGO}
+                  style={styles.fallbackLogo}
+                  resizeMode="contain"
+                  accessibilityLabel="Woosh Radio"
+                />
+              </View>
+            )}
+
+            <View style={styles.onAirDetails}>
+              <View style={styles.onAirBadge}>
+                <View style={styles.onAirBadgeDot} />
+
+                <Text style={styles.onAirBadgeText}>ON AIR NOW</Text>
+              </View>
+
+              <Text style={styles.onAirTitle} numberOfLines={2}>
+                {onAirTitle}
               </Text>
             </View>
-          ) : (
-            shows.map((show) => (
-              <View key={show.id} style={styles.programCard}>
-                {show.artwork ? (
-                  <Image
-                    source={{ uri: show.artwork }}
-                    style={styles.programArtImage}
-                    resizeMode="cover"
-                    accessibilityLabel={`${show.title.rendered} artwork`}
-                  />
-                ) : (
-                  <View style={[styles.programArt, styles.artPurple]}>
-                    <Text style={styles.artLabel}>WOOSH</Text>
-                    <Text style={styles.artTitle}>RADIO</Text>
-                  </View>
-                )}
+          </View>
+        ) : (
+          <View style={styles.messageCard}>
+            <View style={styles.noShowIcon}>
+              <Text style={styles.noShowIconText}>♫</Text>
+            </View>
 
-                <View style={styles.programInfo}>
-                  <Text style={styles.programTime}>WOOSH RADIO SHOW</Text>
+            <Text style={styles.messageTitle}>No show currently scheduled</Text>
 
-                  <Text style={styles.programName}>
-                    {show.title.rendered.replace(/<[^>]*>/g, "")}
-                  </Text>
+            <Text style={styles.messageText}>
+              There isn’t a programme listed for this time. Check the schedule
+              to see what’s coming up next.
+            </Text>
+          </View>
+        )}
 
-                  <Text style={styles.programDescription} numberOfLines={4}>
-                    {(show.excerpt.rendered || show.content.rendered)
-                      .replace(/<[^>]*>/g, " ")
-                      .replace(/&nbsp;/g, " ")
-                      .replace(/&#8217;|&#x2019;|&rsquo;/g, "’")
-                      .replace(/&#8216;|&#x2018;|&lsquo;/g, "‘")
-                      .replace(/&#8220;|&#x201C;|&ldquo;/g, "“")
-                      .replace(/&#8221;|&#x201D;|&rdquo;/g, "”")
-                      .replace(/&amp;/g, "&")
-                      .replace(/&quot;/g, '"')
-                      .replace(/&#039;|&apos;/g, "'")
-                      .replace(/&#8211;|&#x2013;/g, "–")
-                      .replace(/&#8212;|&#x2014;/g, "—")
-                      .replace(/\s+/g, " ")
-                      .trim()}
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
+        <View style={styles.navigationButtons}>
+          <Pressable
+            onPress={openSchedule}
+            style={({ pressed }) => [
+              styles.navigationButton,
+              styles.scheduleButton,
+              pressed && styles.buttonPressed,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.navigationButtonText}>VIEW SCHEDULE</Text>
+
+            <Text style={styles.navigationButtonArrow}>→</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={openShows}
+            style={({ pressed }) => [
+              styles.navigationButton,
+              styles.exploreButton,
+              pressed && styles.buttonPressed,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.navigationButtonText}>EXPLORE ALL SHOWS</Text>
+
+            <Text style={styles.navigationButtonArrow}>→</Text>
+          </Pressable>
         </View>
 
-        {/* Brand footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerBrand}>WOOSH RADIO</Text>
-          <Text style={styles.footerText}>The Sound of What's Happening</Text>
-        </View>
+        <BrandFooter />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#0B0B1A",
+    backgroundColor: COLORS.background,
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 36,
+    paddingTop: 12,
+    paddingBottom: 24,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 38,
+    marginBottom: 28,
   },
-  brandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  logoMark: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: "#7C35F4",
+  logoFrame: {
+    width: 196,
+    height: 72,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#D16BFF",
+    overflow: "hidden",
+    borderRadius: 14,
+    backgroundColor: "#F0EAFE",
+    marginBottom: 12,
   },
-  logoSymbol: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "900",
+  mainLogo: {
+    width: "100%",
+    height: "100%",
   },
-  brandName: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-  },
-  tagline: {
-    color: "#AAA6C7",
-    fontSize: 8,
-    letterSpacing: 0.7,
-    marginTop: 3,
-  },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderWidth: 1,
-    borderColor: "#39304F",
-    borderRadius: 20,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#D64CFF",
-  },
-  liveText: {
-    color: "#E4D9F8",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1,
+  brandTagline: {
+    fontFamily: "SoraBold",
+    color: COLORS.muted,
+    fontSize: 10,
+    letterSpacing: 3,
   },
   hero: {
-    backgroundColor: "#151329",
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: "#30234C",
-    padding: 22,
-    paddingTop: 26,
-    paddingBottom: 24,
+    position: "relative",
     overflow: "hidden",
+    padding: 24,
+    borderRadius: 24,
+    backgroundColor: "#130D29",
+    borderWidth: 1,
+    borderColor: "#3A2059",
+    marginBottom: 34,
   },
-  eyebrow: {
-    color: "#D76AFF",
+  glowTop: {
+    position: "absolute",
+    width: 190,
+    height: 190,
+    top: -95,
+    right: -60,
+    borderRadius: 100,
+    backgroundColor: "#7227B8",
+    opacity: 0.18,
+  },
+  glowBottom: {
+    position: "absolute",
+    width: 160,
+    height: 160,
+    bottom: -90,
+    left: -70,
+    borderRadius: 100,
+    backgroundColor: COLORS.pink,
+    opacity: 0.12,
+  },
+  heroEyebrow: {
+    fontFamily: "InterBold",
+    color: COLORS.pink,
     fontSize: 10,
-    fontWeight: "800",
     letterSpacing: 2,
     marginBottom: 16,
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 43,
-    fontWeight: "900",
-    lineHeight: 48,
+    fontFamily: "SoraExtraBold",
+    color: COLORS.white,
+    fontSize: 42,
+    lineHeight: 47,
     letterSpacing: -1.5,
+    marginBottom: 14,
   },
   heroAccent: {
-    color: "#C56BFF",
+    fontFamily: "SoraExtraBold",
+    color: COLORS.pink,
   },
   heroDescription: {
-    color: "#C2BED8",
+    fontFamily: "InterRegular",
+    color: COLORS.muted,
     fontSize: 14,
     lineHeight: 22,
-    marginTop: 14,
     marginBottom: 24,
     maxWidth: 290,
   },
   listenButton: {
+    minHeight: 54,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: COLORS.pink,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    minHeight: 54,
-    backgroundColor: "#8D35F5",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#C66AFF",
-    shadowColor: "#A63DFF",
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
+    shadowColor: COLORS.pink,
     shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
     elevation: 5,
   },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  playIcon: {
-    color: "#FFFFFF",
-    fontSize: 15,
+  listenButtonIcon: {
+    fontFamily: "InterBold",
+    color: COLORS.white,
+    fontSize: 16,
   },
   listenButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 1.5,
+    fontFamily: "InterBold",
+    color: COLORS.white,
+    fontSize: 12,
+    letterSpacing: 1.2,
   },
-  streamCaption: {
-    color: "#AAA4C6",
-    textAlign: "center",
-    fontSize: 8,
-    letterSpacing: 1,
-    marginTop: 17,
+  liveStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 18,
   },
-  section: {
-    marginTop: 34,
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.muted,
+  },
+  liveDotActive: {
+    backgroundColor: "#36E69A",
+  },
+  liveStatusText: {
+    fontFamily: "InterBold",
+    color: COLORS.muted,
+    fontSize: 9,
+    letterSpacing: 1.1,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginBottom: 17,
+    marginBottom: 18,
+  },
+  sectionHeadingGroup: {
+    gap: 5,
   },
   sectionEyebrow: {
-    color: "#B65AFF",
+    fontFamily: "InterBold",
+    color: COLORS.pink,
     fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.8,
-    marginBottom: 5,
+    letterSpacing: 2,
   },
   sectionTitle: {
-    color: "#FFFFFF",
+    fontFamily: "SoraExtraBold",
+    color: COLORS.white,
     fontSize: 25,
-    fontWeight: "900",
+    lineHeight: 30,
     letterSpacing: -0.5,
   },
   sectionAccent: {
-    color: "#D277FF",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-    paddingBottom: 4,
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
+    backgroundColor: COLORS.pink,
   },
-  programCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 19,
-    backgroundColor: "#151329",
-    borderWidth: 1,
-    borderColor: "#2C2544",
-  },
-  programArt: {
-    width: 104,
-    height: 112,
-    borderRadius: 13,
-    padding: 10,
-    justifyContent: "flex-end",
-    overflow: "hidden",
-  },
-  programArtImage: {
-    width: 104,
-    height: 112,
-    borderRadius: 13,
-    backgroundColor: "#30234C",
-  },
-  artPurple: {
-    backgroundColor: "#5423A4",
-  },
-  artPink: {
-    backgroundColor: "#85295F",
-  },
-  artLabel: {
-    color: "#F0DFFF",
-    fontSize: 8,
-    fontWeight: "900",
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  artTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 19,
-    letterSpacing: -0.3,
-  },
-  programInfo: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  programTime: {
-    color: "#D17AFF",
-    fontSize: 10,
-    fontWeight: "800",
-    marginBottom: 6,
-  },
-  programName: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
-    lineHeight: 20,
-  },
-  programDescription: {
-    color: "#B8B3CF",
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: 6,
-  },
-  statusContainer: {
+  loadingContainer: {
+    minHeight: 170,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 28,
-    paddingHorizontal: 16,
     gap: 12,
-    borderRadius: 19,
-    backgroundColor: "#151329",
-    borderWidth: 1,
-    borderColor: "#2C2544",
   },
-  statusText: {
-    color: "#B8B3CF",
+  loadingText: {
+    fontFamily: "InterRegular",
+    color: COLORS.muted,
     fontSize: 12,
-    lineHeight: 18,
-    textAlign: "center",
   },
-  errorTitle: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "800",
-    textAlign: "center",
+  onAirCard: {
+    flexDirection: "row",
+    overflow: "hidden",
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 24,
   },
-  retryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#8D35F5",
+  onAirArtwork: {
+    width: 124,
+    minHeight: 124,
+    backgroundColor: "#17132D",
   },
-  retryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "900",
+  artworkFallback: {
+    width: 124,
+    minHeight: 124,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#17102D",
+  },
+  fallbackLogo: {
+    width: 72,
+    height: 72,
+  },
+  onAirDetails: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "flex-start",
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+  },
+  onAirBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: "#30203F",
+    marginBottom: 10,
+  },
+  onAirBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.pink,
+  },
+  onAirBadgeText: {
+    fontFamily: "InterBold",
+    color: COLORS.pink,
+    fontSize: 9,
     letterSpacing: 1,
   },
-  footer: {
-    alignItems: "center",
-    paddingTop: 24,
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#29243D",
+  onAirTitle: {
+    fontFamily: "SoraBold",
+    color: COLORS.white,
+    fontSize: 16,
+    lineHeight: 21,
   },
-  footerBrand: {
-    color: "#E4C2FF",
+  messageCard: {
+    alignItems: "flex-start",
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 24,
+  },
+  messageTitle: {
+    fontFamily: "SoraBold",
+    color: COLORS.white,
+    fontSize: 15,
+    marginBottom: 6,
+  },
+  messageText: {
+    fontFamily: "InterRegular",
+    color: COLORS.muted,
     fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 2,
+    lineHeight: 18,
   },
-  footerText: {
-    color: "#8983A7",
+  noShowIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#30203F",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  noShowIconText: {
+    fontFamily: "InterBold",
+    color: COLORS.pink,
+    fontSize: 23,
+  },
+  retryButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.pink,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    fontFamily: "InterBold",
+    color: COLORS.white,
     fontSize: 10,
-    marginTop: 6,
+    letterSpacing: 1,
+  },
+  navigationButtons: {
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  navigationButton: {
+    minHeight: 54,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+  },
+  scheduleButton: {
+    backgroundColor: COLORS.pink,
+    borderColor: COLORS.pink,
+  },
+  exploreButton: {
+    backgroundColor: COLORS.purple,
+    borderColor: COLORS.purple,
+  },
+  navigationButtonText: {
+    fontFamily: "InterBold",
+    color: COLORS.white,
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  navigationButtonArrow: {
+    fontFamily: "InterBold",
+    color: COLORS.white,
+    fontSize: 22,
+  },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });

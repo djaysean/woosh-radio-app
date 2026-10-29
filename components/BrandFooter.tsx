@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   brandName: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     letterSpacing: 3,
     textAlign: "center",
     marginBottom: 7,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   tagline: {
     color: "#D8B4FE",
     fontSize: 10,
-    fontWeight: "700",
+    fontFamily: "InterBold",
     letterSpacing: 1.2,
     textAlign: "center",
   },

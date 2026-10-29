@@ -139,12 +139,12 @@ const styles = StyleSheet.create({
   backText: {
     color: "#D8B4FE",
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "InterSemiBold",
   },
   brand: {
     color: "#D8B4FE",
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 18,
   },
@@ -159,19 +159,20 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 29,
     lineHeight: 37,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     marginBottom: 24,
   },
   sectionTitle: {
     color: "#F0ABFC",
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 2,
     marginBottom: 12,
   },
   biography: {
     color: "#D0CDDF",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 26,
   },
   profileButton: {
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   profileButtonText: {
     color: "#F0ABFC",
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 1,
   },
   stateContainer: {
@@ -199,11 +200,13 @@ const styles = StyleSheet.create({
   stateText: {
     color: "#D0CDDF",
     fontSize: 14,
+    fontFamily: "InterRegular",
   },
   errorText: {
     color: "#FCA5A5",
     textAlign: "center",
     fontSize: 14,
+    fontFamily: "InterRegular",
   },
   retryButton: {
     backgroundColor: "#382044",
@@ -213,6 +216,6 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontFamily: "InterBold",
   },
 });

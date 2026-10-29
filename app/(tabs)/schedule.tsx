@@ -15,8 +15,8 @@ import BrandFooter from "../../components/BrandFooter";
 import {
   getRadioShows,
   getWeeklySchedule,
-  RadioShow,
-  WeeklySchedule,
+  type RadioShow,
+  type WeeklySchedule,
 } from "../../lib/wordpress";
 
 const COLORS = {
@@ -142,6 +142,7 @@ export default function ScheduleScreen() {
             <Pressable
               style={styles.retryButton}
               onPress={() => void loadSchedule()}
+              accessibilityRole="button"
             >
               <Text style={styles.retryText}>TRY AGAIN</Text>
             </Pressable>
@@ -163,6 +164,8 @@ export default function ScheduleScreen() {
                     key={day.id}
                     onPress={() => setSelectedDayId(day.id)}
                     style={[styles.dayButton, active && styles.dayButtonActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
                   >
                     <Text
                       style={[
@@ -211,6 +214,7 @@ export default function ScheduleScreen() {
                         source={{ uri: show.artwork }}
                         style={styles.artwork}
                         resizeMode="cover"
+                        accessibilityLabel="Show artwork"
                       />
                     ) : (
                       <View style={styles.artworkPlaceholder}>
@@ -268,27 +272,28 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   eyebrow: {
+    fontFamily: "InterBold",
     color: COLORS.accent,
     fontSize: 12,
-    fontWeight: "800",
     letterSpacing: 3,
     marginBottom: 10,
   },
   title: {
+    fontFamily: "SoraExtraBold",
     color: COLORS.text,
     fontSize: 30,
-    fontWeight: "800",
     letterSpacing: -0.8,
   },
   subtitle: {
+    fontFamily: "InterRegular",
     color: COLORS.muted,
     fontSize: 14,
     marginTop: 8,
   },
   sectionLabel: {
+    fontFamily: "InterBold",
     color: COLORS.muted,
     fontSize: 11,
-    fontWeight: "800",
     letterSpacing: 1.8,
     marginBottom: 12,
   },
@@ -309,11 +314,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
   },
   dayButtonText: {
+    fontFamily: "InterMedium",
     color: COLORS.muted,
     fontSize: 13,
-    fontWeight: "700",
   },
   dayButtonTextActive: {
+    fontFamily: "InterSemiBold",
     color: COLORS.text,
   },
   dayHeading: {
@@ -321,11 +327,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dayTitle: {
+    fontFamily: "SoraBold",
     color: COLORS.text,
     fontSize: 24,
-    fontWeight: "800",
   },
   daySubtitle: {
+    fontFamily: "InterRegular",
     color: COLORS.muted,
     fontSize: 13,
     marginTop: 5,
@@ -356,25 +363,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   placeholderMark: {
+    fontFamily: "SoraExtraBold",
     color: COLORS.text,
     fontSize: 32,
-    fontWeight: "900",
   },
   showDetails: {
     flex: 1,
   },
   showTitle: {
+    fontFamily: "SoraBold",
     color: COLORS.text,
     fontSize: 15,
-    fontWeight: "800",
     marginBottom: 8,
   },
   showTime: {
+    fontFamily: "InterSemiBold",
     color: COLORS.accent,
     fontSize: 14,
-    fontWeight: "700",
   },
   timezoneNote: {
+    fontFamily: "InterRegular",
     color: COLORS.muted,
     fontSize: 10,
     marginTop: 6,
@@ -385,15 +393,16 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   messageText: {
+    fontFamily: "InterRegular",
     color: COLORS.muted,
     fontSize: 14,
     lineHeight: 21,
     textAlign: "center",
   },
   errorTitle: {
+    fontFamily: "SoraBold",
     color: COLORS.text,
     fontSize: 20,
-    fontWeight: "800",
   },
   retryButton: {
     backgroundColor: COLORS.accentDark,
@@ -403,12 +412,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   retryText: {
+    fontFamily: "InterBold",
     color: COLORS.text,
     fontSize: 12,
-    fontWeight: "800",
     letterSpacing: 1,
   },
   inlineError: {
+    fontFamily: "InterMedium",
     color: "#FF8A8A",
     fontSize: 12,
     marginTop: 10,
@@ -421,11 +431,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
+    fontFamily: "SoraBold",
     color: COLORS.text,
     fontSize: 17,
-    fontWeight: "800",
   },
   footerNote: {
+    fontFamily: "InterRegular",
     color: COLORS.muted,
     fontSize: 12,
     lineHeight: 18,

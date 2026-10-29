@@ -236,6 +236,7 @@ export default function ContactScreen() {
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <Pressable
             onPress={() => router.back()}
@@ -377,24 +378,25 @@ const styles = StyleSheet.create({
   backText: {
     color: "#D8B4FE",
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "InterSemiBold",
   },
   brand: {
     color: "#D8B4FE",
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 3,
     marginBottom: 12,
   },
   heading: {
     color: "#FFFFFF",
     fontSize: 32,
-    fontWeight: "800",
+    fontFamily: "SoraExtraBold",
     marginBottom: 12,
   },
   description: {
     color: "#D0CDDF",
     fontSize: 15,
+    fontFamily: "InterRegular",
     lineHeight: 24,
     marginBottom: 26,
   },
@@ -411,7 +413,7 @@ const styles = StyleSheet.create({
   label: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "InterSemiBold",
     marginBottom: 9,
   },
   input: {
@@ -424,6 +426,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: "#FFFFFF",
     fontSize: 15,
+    fontFamily: "InterRegular",
   },
   messageInput: {
     minHeight: 145,
@@ -441,10 +444,12 @@ const styles = StyleSheet.create({
   fieldError: {
     color: "#F5A5B0",
     fontSize: 12,
+    fontFamily: "InterRegular",
   },
   characterCount: {
     color: "#8983A7",
     fontSize: 11,
+    fontFamily: "InterRegular",
     marginLeft: "auto",
   },
   feedbackBox: {
@@ -463,6 +468,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     fontSize: 13,
+    fontFamily: "InterRegular",
     lineHeight: 20,
   },
   successText: {
@@ -489,7 +495,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: "800",
+    fontFamily: "InterBold",
     letterSpacing: 1,
   },
   loadingRow: {
@@ -500,6 +506,7 @@ const styles = StyleSheet.create({
   privacyNote: {
     color: "#8983A7",
     fontSize: 11,
+    fontFamily: "InterRegular",
     lineHeight: 17,
     textAlign: "center",
     marginTop: 16,
