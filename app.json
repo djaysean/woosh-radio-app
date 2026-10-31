@@ -8,6 +8,7 @@
     "scheme": "wooshradio",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.wooshradio.app",
       "supportsTablet": true
     },
     "android": {
@@ -23,7 +24,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
-      "package": "com.djaysean.WooshRadio"
+      "package": "com.wooshradio.app"
     },
     "web": {
       "bundler": "metro",
@@ -62,6 +63,6 @@
         "projectId": "7aecb269-b098-40f2-b157-adee050fcae8"
       }
     },
-    "owner": "aceworldteam"
+    "owner": "paniel-apps"
   }
 }
